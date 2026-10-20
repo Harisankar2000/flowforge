@@ -1,0 +1,21 @@
+{
+  "name": "nightly-health-check",
+  "description": "Pings a service every night at 02:00 IST and logs the result.",
+  "schedule": { "cron": "0 2 * * *", "timezone": "Asia/Kolkata" },
+  "definition": {
+    "steps": [
+      {
+        "key": "ping",
+        "type": "http",
+        "retry": { "maxAttempts": 3, "backoff": "fixed", "delayMs": 5000 },
+        "config": { "url": "https://jsonplaceholder.typicode.com/todos/1" }
+      },
+      {
+        "key": "report",
+        "type": "log",
+        "dependsOn": ["ping"],
+        "config": { "message": "Health check returned HTTP {{steps.ping.output.status}}" }
+      }
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "name": "order-fulfilment",
+  "description": "Fetch an order, reserve stock and charge payment in parallel, wait, then notify the customer.",
+  "definition": {
+    "steps": [
+      {
+        "key": "fetchOrder",
+        "type": "http",
+        "config": { "url": "https://jsonplaceholder.typicode.com/posts/{{input.orderId}}" }
+      },
+      {
+        "key": "reserveStock",
+        "type": "http",
+        "dependsOn": ["fetchOrder"],
+        "retry": { "maxAttempts": 5, "backoff": "exponential", "delayMs": 500 },
+        "config": {
+          "method": "POST",
+          "url": "https://jsonplaceholder.typicode.com/posts",
+          "body": { "orderId": "{{steps.fetchOrder.output.body.id}}", "action": "reserve" }
+        }
+      },
+      {
+        "key": "chargePayment",
+        "type": "http",
+        "dependsOn": ["fetchOrder"],
+        "timeoutMs": 10000,
+        "config": {
+          "method": "POST",
+          "url": "https://jsonplaceholder.typicode.com/posts",
+          "body": { "orderId": "{{steps.fetchOrder.output.body.id}}", "action": "charge" }
+        }
+      },
+      {
+        "key": "coolDown",
+        "type": "delay",
+        "dependsOn": ["reserveStock", "chargePayment"],
+        "config": { "durationMs": 2000 }
+      },
+      {
+        "key": "notifyCustomer",
+        "type": "log",
+        "dependsOn": ["coolDown"],
+        "config": {
+          "message": "Order {{steps.fetchOrder.output.body.id}} fulfilled in run {{run.id}}"
+        }
+      }
+    ]
+  }
+}
